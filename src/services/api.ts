@@ -1,5 +1,5 @@
-// Mock API service for NeoNest Admin Dashboard
-// In production, replace these with real API calls
+// API service for NeoNest Admin Dashboard
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -27,15 +27,25 @@ export interface VerificationItem {
 
 export interface Booking {
   id: string;
-  motherId: string;
-  motherName: string;
-  organizationId: string;
-  organizationName: string;
-  caregiverId: string;
-  caregiverName: string;
+  selectedCaregiver: string;
+  city: string;
+  services: string[];
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  duration: string;
+  frequency: string;
+  serviceAddress: string;
+  specialInstructions: string;
+  babyAge: string;
+  urgency: string;
+  specialNeeds: string;
+  amount: number;
+  paymentStatus: string;
+  paymentMethod: string;
+  transactionId: string;
   status: 'pending' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled';
-  date: string;
-  serviceType: string;
+  notes: string;
 }
 
 // Simulate API delay
@@ -182,27 +192,75 @@ const mockBookings: Booking[] = [
 // Auth token storage
 const TOKEN_KEY = 'neonest_admin_token';
 
+// Helper function to get auth headers
+const getAuthHeaders = (): HeadersInit => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+};
+
+// Helper function to handle API responses
+const handleResponse = async <T>(response: Response): Promise<any> => {
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
+    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+  }
+  const data = await response.json();
+  return data;
+};
+
 export const authAPI = {
   async login(email: string, password: string): Promise<{ token: string; admin: any }> {
-    await delay(800);
-    
-    // Mock validation
-    if (email === 'admin@neonest.in' && password === 'admin123') {
-      const token = 'mock_jwt_token_' + Date.now();
-      const admin = {
-        id: 'ADM001',
-        name: 'Admin User',
-        email: email,
-        role: 'super_admin',
-      };
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await handleResponse<{ success: boolean; token: string; admin: any }>(response);
       
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem('neonest_admin', JSON.stringify(admin));
+      if (data.success && data.token && data.admin) {
+        localStorage.setItem(TOKEN_KEY, data.token);
+        localStorage.setItem('neonest_admin', JSON.stringify(data.admin));
+        return { token: data.token, admin: data.admin };
+      }
       
-      return { token, admin };
+      throw new Error(data.message || 'Invalid response from server');
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to login');
     }
-    
-    throw new Error('Invalid credentials');
+  },
+  
+  async verify(): Promise<{ admin: any } | null> {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        return null;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+
+      const data = await handleResponse<{ admin: any }>(response);
+      
+      if (data.success && data.admin) {
+        localStorage.setItem('neonest_admin', JSON.stringify(data.admin));
+        return { admin: data.admin };
+      }
+      
+      return null;
+    } catch (error) {
+      // Token is invalid, clear storage
+      authAPI.logout();
+      return null;
+    }
   },
   
   logout(): void {
@@ -226,11 +284,15 @@ export const authAPI = {
 
 export const dashboardAPI = {
   async getStats(): Promise<DashboardStats> {
+    // TODO: Replace with real API call when dashboard endpoints are ready
+    // For now, using mock data
     await delay(500);
     return mockStats;
   },
   
   async getMonthlyBookings(): Promise<MonthlyBooking[]> {
+    // TODO: Replace with real API call when dashboard endpoints are ready
+    // For now, using mock data
     await delay(500);
     return mockMonthlyBookings;
   },
@@ -238,14 +300,35 @@ export const dashboardAPI = {
 
 export const verificationAPI = {
   async getAll(type?: 'woman' | 'organization' | 'caregiver'): Promise<VerificationItem[]> {
-    await delay(600);
-    if (type) {
-      return mockVerifications.filter(v => v.type === type);
+    if (type === 'caregiver') {
+      const response = await fetch(`${API_BASE_URL}/verifications/caregivers`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      const data = await handleResponse<{ success: boolean; caregivers: any[] }>(response);
+      if (data.success && Array.isArray(data.caregivers)) {
+        // Map to unified fields expected by UI
+        return data.caregivers.map((c, index) => ({
+          id: String(index + 1),
+          name: `${c.fname ?? c.name ?? ''}${c.lname ? ` ${c.lname}` : ''}`.trim(),
+          email: c.email,
+          city: c.selectedCity ?? c.city,
+          status: c.status,
+          phone: c.phone,
+          type: 'caregiver',
+          createdAt: c.createdAt,
+        }));
+      }
+      return [];
     }
+    // Fallback to mock for other types until backend endpoints exist
+    await delay(600);
+    if (type) return mockVerifications.filter(v => v.type === type);
     return mockVerifications;
   },
   
   async approve(id: string): Promise<void> {
+    // TODO: Replace with real API call when verification endpoints are ready
     await delay(400);
     const item = mockVerifications.find(v => v.id === id);
     if (item) {
@@ -254,6 +337,7 @@ export const verificationAPI = {
   },
   
   async reject(id: string): Promise<void> {
+    // TODO: Replace with real API call when verification endpoints are ready
     await delay(400);
     const item = mockVerifications.find(v => v.id === id);
     if (item) {
@@ -264,21 +348,50 @@ export const verificationAPI = {
 
 export const bookingAPI = {
   async getAll(): Promise<Booking[]> {
-    await delay(600);
-    return mockBookings;
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse<{ success: boolean; bookings: any[] }>(response);
+    if (data.success && Array.isArray(data.bookings)) {
+      return data.bookings.map((b) => ({
+        id: b.id || b._id,
+        selectedCaregiver: b.selectedCaregiver,
+        city: b.city,
+        services: Array.isArray(b.services) ? b.services : [],
+        startDate: typeof b.startDate === 'string' ? b.startDate : new Date(b.startDate).toISOString(),
+        endDate: typeof b.endDate === 'string' ? b.endDate : new Date(b.endDate).toISOString(),
+        startTime: b.startTime,
+        duration: b.duration,
+        frequency: b.frequency,
+        serviceAddress: b.serviceAddress,
+        specialInstructions: b.specialInstructions,
+        babyAge: b.babyAge,
+        urgency: b.urgency,
+        specialNeeds: b.specialNeeds,
+        amount: Number(b.amount ?? 0),
+        paymentStatus: b.paymentStatus,
+        paymentMethod: b.paymentMethod,
+        transactionId: b.transactionId,
+        status: b.status,
+        notes: b.notes,
+      }));
+    }
+    return [];
   },
   
   async updateStatus(id: string, status: Booking['status']): Promise<void> {
-    await delay(400);
-    const booking = mockBookings.find(b => b.id === id);
-    if (booking) {
-      booking.status = status;
-    }
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    await handleResponse<{ success: boolean; booking: any }>(response);
   },
   
   async forward(id: string, newCaregiverId: string): Promise<void> {
+    // TODO: Replace with real API call when booking endpoints are ready
     await delay(400);
-    // Mock forwarding logic
     console.log(`Forwarding booking ${id} to caregiver ${newCaregiverId}`);
   },
 };

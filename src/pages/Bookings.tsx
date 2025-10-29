@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Skeleton } from '../components/ui/skeleton';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { bookingAPI, Booking } from '../services/api';
 
 export function Bookings() {
@@ -147,11 +147,15 @@ export function Bookings() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">Booking ID</TableHead>
-                    <TableHead className="whitespace-nowrap">Mother</TableHead>
-                    <TableHead className="whitespace-nowrap">Organization</TableHead>
                     <TableHead className="whitespace-nowrap">Caregiver</TableHead>
-                    <TableHead className="whitespace-nowrap">Service Type</TableHead>
-                    <TableHead className="whitespace-nowrap">Date</TableHead>
+                    <TableHead className="whitespace-nowrap">City</TableHead>
+                    <TableHead className="whitespace-nowrap">Services</TableHead>
+                    <TableHead className="whitespace-nowrap">Date Range</TableHead>
+                    <TableHead className="whitespace-nowrap">Time</TableHead>
+                    <TableHead className="whitespace-nowrap">Duration</TableHead>
+                    <TableHead className="whitespace-nowrap">Frequency</TableHead>
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Payment</TableHead>
                     <TableHead className="whitespace-nowrap">Status</TableHead>
                     <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                   </TableRow>
@@ -160,11 +164,21 @@ export function Bookings() {
                   {filteredBookings.map((booking) => (
                     <TableRow key={booking.id}>
                       <TableCell>{booking.id}</TableCell>
-                      <TableCell>{booking.motherName}</TableCell>
-                      <TableCell>{booking.organizationName}</TableCell>
-                      <TableCell>{booking.caregiverName}</TableCell>
-                      <TableCell>{booking.serviceType}</TableCell>
-                      <TableCell>{new Date(booking.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{booking.selectedCaregiver}</TableCell>
+                      <TableCell>{booking.city}</TableCell>
+                      <TableCell>{Array.isArray(booking.services) ? booking.services.join(', ') : ''}</TableCell>
+                      <TableCell>
+                        {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>{booking.startTime}</TableCell>
+                      <TableCell>{booking.duration}</TableCell>
+                      <TableCell>{booking.frequency}</TableCell>
+                      <TableCell>
+                        {Intl.NumberFormat(undefined, { style: 'currency', currency: 'INR' }).format(booking.amount || 0)}
+                      </TableCell>
+                      <TableCell>
+                        {booking.paymentStatus} {booking.paymentMethod ? `(${booking.paymentMethod})` : ''}
+                      </TableCell>
                       <TableCell>{getStatusBadge(booking.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">

@@ -10,11 +10,22 @@ export function useAuth() {
     checkAuth();
   }, []);
 
-  const checkAuth = () => {
-    const authenticated = authAPI.isAuthenticated();
-    const adminData = authAPI.getAdmin();
-    setIsAuthenticated(authenticated);
-    setAdmin(adminData);
+  const checkAuth = async () => {
+    const token = authAPI.getToken();
+    if (token) {
+      // Verify token with backend
+      const result = await authAPI.verify();
+      if (result && result.admin) {
+        setIsAuthenticated(true);
+        setAdmin(result.admin);
+      } else {
+        setIsAuthenticated(false);
+        setAdmin(null);
+      }
+    } else {
+      setIsAuthenticated(false);
+      setAdmin(null);
+    }
     setLoading(false);
   };
 
