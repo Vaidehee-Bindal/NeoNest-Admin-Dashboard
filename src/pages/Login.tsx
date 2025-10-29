@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card } from '../components/ui/card';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface LoginProps {
   onLogin: (email: string, password: string) => Promise<void>;

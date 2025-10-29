@@ -2,28 +2,28 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle, XCircle, Eye, Search } from 'lucide-react';
 import { Card } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+// Tabs removed since we only show caregivers
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Skeleton } from '../components/ui/skeleton';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { verificationAPI, VerificationItem } from '../services/api';
 
 export function Verifications() {
   const [verifications, setVerifications] = useState<VerificationItem[]>([]);
   const [filteredVerifications, setFilteredVerifications] = useState<VerificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('women');
+  // Only caregivers view
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<VerificationItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     loadVerifications();
-  }, [activeTab]);
+  }, []);
 
   useEffect(() => {
     filterVerifications();
@@ -32,8 +32,7 @@ export function Verifications() {
   const loadVerifications = async () => {
     setLoading(true);
     try {
-      const type = activeTab === 'women' ? 'woman' : activeTab === 'organizations' ? 'organization' : 'caregiver';
-      const data = await verificationAPI.getAll(type);
+      const data = await verificationAPI.getAll('caregiver');
       setVerifications(data);
       setFilteredVerifications(data);
     } catch (error) {
@@ -58,27 +57,7 @@ export function Verifications() {
     setFilteredVerifications(filtered);
   };
 
-  const handleApprove = async (id: string) => {
-    try {
-      await verificationAPI.approve(id);
-      toast.success('Verification approved successfully');
-      loadVerifications();
-      setDialogOpen(false);
-    } catch (error) {
-      toast.error('Failed to approve verification');
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      await verificationAPI.reject(id);
-      toast.success('Verification rejected');
-      loadVerifications();
-      setDialogOpen(false);
-    } catch (error) {
-      toast.error('Failed to reject verification');
-    }
-  };
+  // Approve/Reject removed (view-only)
 
   const handleViewDetails = (item: VerificationItem) => {
     setSelectedItem(item);
@@ -106,9 +85,9 @@ export function Verifications() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="mb-2">Verification Management</h1>
+        <h1 className="mb-2">Caregiver Verifications</h1>
         <p className="text-muted-foreground">
-          Review and approve registrations for women, organizations, and caregivers.
+          Review caregiver applications from the database.
         </p>
       </motion.div>
 
@@ -129,93 +108,63 @@ export function Verifications() {
         </div>
       </motion.div>
 
-      {/* Tabs */}
+      {/* Caregivers Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
         <Card className="p-4 md:p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full max-w-full md:max-w-md grid-cols-3">
-              <TabsTrigger value="women" className="text-xs md:text-sm">Women</TabsTrigger>
-              <TabsTrigger value="organizations" className="text-xs md:text-sm">Organizations</TabsTrigger>
-              <TabsTrigger value="caregivers" className="text-xs md:text-sm">Caregivers</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab} className="mt-4 md:mt-6">
-              {loading ? (
-                <div className="space-y-3">
-                  {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : filteredVerifications.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No caregiver verifications found.
+            </div>
+          ) : (
+            <div className="rounded-md border border-border overflow-x-auto">
+              <Table className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">ID</TableHead>
+                    <TableHead className="whitespace-nowrap">Name</TableHead>
+                    <TableHead className="whitespace-nowrap">Email</TableHead>
+                    <TableHead className="whitespace-nowrap">City</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredVerifications.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.id}</TableCell>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell>{item.email}</TableCell>
+                      <TableCell>{item.city}</TableCell>
+                      <TableCell>{getStatusBadge(item.status)}</TableCell>
+                      <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewDetails(item)}
+                          >
+                            <Eye size={16} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </div>
-              ) : filteredVerifications.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  No verifications found.
-                </div>
-              ) : (
-                <div className="rounded-md border border-border overflow-x-auto">
-                  <Table className="min-w-[640px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap">ID</TableHead>
-                        <TableHead className="whitespace-nowrap">Name</TableHead>
-                        <TableHead className="whitespace-nowrap">Email</TableHead>
-                        <TableHead className="whitespace-nowrap">City</TableHead>
-                        <TableHead className="whitespace-nowrap">Status</TableHead>
-                        <TableHead className="whitespace-nowrap">Date</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredVerifications.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.id}</TableCell>
-                          <TableCell>{item.name}</TableCell>
-                          <TableCell>{item.email}</TableCell>
-                          <TableCell>{item.city}</TableCell>
-                          <TableCell>{getStatusBadge(item.status)}</TableCell>
-                          <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleViewDetails(item)}
-                              >
-                                <Eye size={16} />
-                              </Button>
-                              {item.status === 'pending' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleApprove(item.id)}
-                                    className="text-accent hover:bg-accent/10"
-                                  >
-                                    <CheckCircle size={16} />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleReject(item.id)}
-                                    className="text-destructive hover:bg-destructive/10"
-                                  >
-                                    <XCircle size={16} />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Card>
       </motion.div>
 
@@ -264,26 +213,7 @@ export function Verifications() {
                   <p className="text-foreground">{new Date(selectedItem.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
-
-              {selectedItem.status === 'pending' && (
-                <div className="flex gap-3 pt-4 border-t border-border">
-                  <Button
-                    className="flex-1 bg-accent hover:bg-accent/90"
-                    onClick={() => handleApprove(selectedItem.id)}
-                  >
-                    <CheckCircle size={18} className="mr-2" />
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => handleReject(selectedItem.id)}
-                  >
-                    <XCircle size={18} className="mr-2" />
-                    Reject
-                  </Button>
-                </div>
-              )}
+              {/* Actions removed */}
             </div>
           )}
         </DialogContent>
